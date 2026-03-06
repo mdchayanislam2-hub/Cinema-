@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>আমার ভিডিও গ্যালারি</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 15px; text-align: center; }
+        .upload-section { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
+        input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+        .save-btn { width: 95%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .gallery { margin-top: 30px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
+        video, img { width: 100%; border-radius: 8px; margin-top: 10px; background: #000; }
+        .title-text { font-size: 18px; font-weight: bold; color: #333; display: block; margin-bottom: 10px; }
+        .del-btn { background: #ff4444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="upload-section">
+        <h3>নতুন ফাইল আপলোড</h3>
+        <input type="text" id="itemName" placeholder="সিনেমার নাম বা টাইটেল">
+        <input type="file" id="itemFile" accept="image/*,video/*">
+        <button class="save-btn" onclick="uploadToServer()">সেভ এবং আপলোড করুন</button>
+    </div>
+
+    <div id="gallery" class="gallery"></div>
+
+    <script>
+        // আপনার Firebase বা ডাটাবেস লিঙ্কটি এখানে দিন [cite: 2026-02-26]
+        const DB_URL = "https://your-project-id.firebaseio.com/mydata.json";
+
+        async function uploadToServer() {
+            const title = document.getElementById('itemName').value;
+            const fileInput = document.getElementById('itemFile');
+            const file = fileInput.files[0];
+
+            if (!title || !file) {
+                alert("দয়া করে নাম এবং ফাইল সিলেক্ট করুন!");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async function () {
+                const fileData = reader.result;
+
+                // ইন্টারনেটে ডাটাবেসে সেভ করা [cite: 2026-02-23]
+                try {
+                    await fetch(DB_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ 
+                            name: title, 
+                            url: fileData 
+                        })
+                    });
+                    alert("সফলভাবে ইন্টারনেটে সেভ হয়েছে!");
+                    location.reload(); 
+                } catch (e) {
+                    alert("সেভ করতে সমস্যা হয়েছে। ডাটাবেস লিঙ্ক চেক করুন।");
+                }
+            };
+        }
+
+        async function loadGallery() {
+            const gallery = document.getElementById('gallery');
+            try {
+                const res = await fetch(DB_URL);
+                const data = await res.json();
+                gallery.innerHTML = '';
+                
+                if (data) {
+                    for (let id in data) {
+                        const item = data[id];
+                        const isVideo = item.url.includes("video") || item.url.includes(".mp4");
+                        
+                        gallery.innerHTML += `
+                            <div class="card">
+                                <span class="title-text">${item.name}</span>
+                                ${isVideo ? 
+                                    `<video controls src="${item.url}"></video>` : 
+                                    `<img src="${item.url}">`}
+                                <br>
+                                <button class="del-btn" onclick="deleteItem('${id}')">ডিলিট করুন</button>
+                            </div>`;
+                    }
+                }
+            } catch (e) { console.log("কোনো ডাটা নেই"); }
+        }
+
+        async function deleteItem(id) {
+            if(confirm("আপনি কি এটি মুছে ফেলতে চান?")) {
+                const delUrl = `https://your-project-id.firebaseio.com/mydata/${id}.json`;
+                await fetch(delUrl, { method: 'DELETE' });
+                location.reload();
+            }
+        }
+
+        window.onload = loadGallery;
+    </script>
+</body>
+</html>
